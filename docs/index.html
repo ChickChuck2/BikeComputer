@@ -505,7 +505,7 @@
         btnConnect.textContent = 'Buscando BikeComputer...';
 
         bleDevice = await navigator.bluetooth.requestDevice({
-          filters: [{ name: 'BikeComputer' }],
+          acceptAllDevices: true,
           optionalServices: [NUS_SERVICE_UUID]
         });
 
