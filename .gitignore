@@ -1,0 +1,8 @@
+build/
+build_esp32/
+web/*.pem
+.vscode/
+*.o
+*.elf
+*.bin
+*.hex

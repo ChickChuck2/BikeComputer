@@ -1,0 +1,555 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>Bike Computer - GPS Bluetooth Bridge</title>
+  <style>
+    :root {
+      --bg: #090d16;
+      --card-bg: rgba(22, 29, 47, 0.7);
+      --card-border: rgba(255, 255, 255, 0.08);
+      --primary: #00f2fe;
+      --primary-glow: rgba(0, 242, 254, 0.35);
+      --accent: #4facfe;
+      --success: #00e676;
+      --warning: #ffd600;
+      --danger: #ff1744;
+      --text: #ffffff;
+      --text-muted: #8899b5;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    body {
+      background-color: var(--bg);
+      background-image: 
+        radial-gradient(at 0% 0%, rgba(79, 172, 254, 0.15) 0px, transparent 50%),
+        radial-gradient(at 100% 100%, rgba(0, 242, 254, 0.1) 0px, transparent 50%);
+      color: var(--text);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 16px;
+      overflow-x: hidden;
+    }
+
+    .container {
+      width: 100%;
+      max-width: 480px;
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+    }
+
+    header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 8px 0;
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .brand-icon {
+      width: 36px;
+      height: 36px;
+      background: linear-gradient(135deg, var(--accent), var(--primary));
+      border-radius: 10px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      box-shadow: 0 4px 14px var(--primary-glow);
+    }
+
+    .brand h1 {
+      font-size: 1.1rem;
+      font-weight: 700;
+      letter-spacing: 0.5px;
+    }
+
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 5px 12px;
+      border-radius: 20px;
+      font-size: 0.75rem;
+      font-weight: 600;
+      letter-spacing: 0.5px;
+      text-transform: uppercase;
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid var(--card-border);
+      backdrop-filter: blur(8px);
+    }
+
+    .badge-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: var(--danger);
+      box-shadow: 0 0 8px var(--danger);
+      transition: all 0.3s ease;
+    }
+
+    .badge.connected .badge-dot {
+      background: var(--success);
+      box-shadow: 0 0 10px var(--success);
+    }
+
+    .card {
+      background: var(--card-bg);
+      border: 1px solid var(--card-border);
+      border-radius: 20px;
+      padding: 20px;
+      backdrop-filter: blur(16px);
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+    }
+
+    /* Velocidade Principal */
+    .speed-hero {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 30px 10px;
+      text-align: center;
+      position: relative;
+    }
+
+    .speed-val {
+      font-size: 5.5rem;
+      font-weight: 800;
+      line-height: 1;
+      letter-spacing: -2px;
+      background: linear-gradient(180deg, #ffffff 30%, #a6d5fa 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      margin-bottom: 4px;
+    }
+
+    .speed-unit {
+      font-size: 1.1rem;
+      color: var(--primary);
+      font-weight: 700;
+      letter-spacing: 2px;
+      text-transform: uppercase;
+    }
+
+    /* Grid de Métricas Secundárias */
+    .metrics-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+    }
+
+    .metric-card {
+      background: rgba(255, 255, 255, 0.03);
+      border: 1px solid var(--card-border);
+      border-radius: 14px;
+      padding: 14px;
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+
+    .metric-title {
+      font-size: 0.72rem;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      color: var(--text-muted);
+      font-weight: 600;
+    }
+
+    .metric-val {
+      font-size: 1.5rem;
+      font-weight: 700;
+    }
+
+    /* Controles e Botão Principal */
+    .btn-connect {
+      width: 100%;
+      padding: 16px;
+      font-size: 1.05rem;
+      font-weight: 700;
+      color: #040914;
+      background: linear-gradient(135deg, var(--primary), var(--accent));
+      border: none;
+      border-radius: 16px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
+      box-shadow: 0 6px 20px var(--primary-glow);
+      transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+
+    .btn-connect:active {
+      transform: scale(0.98);
+      filter: brightness(1.1);
+    }
+
+    .btn-connect.connected {
+      background: linear-gradient(135deg, #ff5252, #d50000);
+      color: #ffffff;
+      box-shadow: 0 6px 20px rgba(255, 23, 68, 0.3);
+    }
+
+    /* Seção de GPS Status */
+    .gps-status {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 12px 16px;
+      font-size: 0.82rem;
+      background: rgba(255, 255, 255, 0.02);
+      border: 1px solid var(--card-border);
+      border-radius: 12px;
+    }
+
+    .gps-item {
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+    }
+
+    .gps-item span:first-child {
+      color: var(--text-muted);
+      font-size: 0.7rem;
+    }
+
+    /* Slider de Simulação / Teste Rápido */
+    .sim-box {
+      margin-top: 8px;
+      padding-top: 14px;
+      border-top: 1px solid var(--card-border);
+    }
+
+    .sim-header {
+      display: flex;
+      justify-content: space-between;
+      font-size: 0.78rem;
+      color: var(--text-muted);
+      margin-bottom: 8px;
+    }
+
+    .slider {
+      width: 100%;
+      height: 6px;
+      border-radius: 3px;
+      background: rgba(255, 255, 255, 0.1);
+      outline: none;
+      accent-color: var(--primary);
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <header>
+      <div class="brand">
+        <div class="brand-icon">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#040914" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="5.5" cy="17.5" r="3.5"/>
+            <circle cx="18.5" cy="17.5" r="3.5"/>
+            <path d="M15 6a1 1 0 1 0 0-2 1 1 0 0 0 0 2zm-3 11.5L9 9l4.5-2.5 3 4.5h3"/>
+          </svg>
+        </div>
+        <div>
+          <h1>Bike Computer</h1>
+          <p style="font-size: 0.7rem; color: var(--text-muted);">GPS Bluetooth Bridge</p>
+        </div>
+      </div>
+      <div class="badge" id="bleBadge">
+        <div class="badge-dot" id="bleDot"></div>
+        <span id="bleText">Desconectado</span>
+      </div>
+    </header>
+
+    <!-- Display de Velocidade -->
+    <div class="card speed-hero">
+      <div class="speed-val" id="dispSpeed">0.0</div>
+      <div class="speed-unit">km/h</div>
+    </div>
+
+    <!-- Métricas -->
+    <div class="metrics-grid">
+      <div class="metric-card">
+        <div class="metric-title">Distância</div>
+        <div class="metric-val"><span id="dispDist">0.00</span> <small style="font-size:0.8rem;color:var(--text-muted);">km</small></div>
+      </div>
+      <div class="metric-card">
+        <div class="metric-title">Altitude</div>
+        <div class="metric-val"><span id="dispAlt">---</span> <small style="font-size:0.8rem;color:var(--text-muted);">m</small></div>
+      </div>
+    </div>
+
+    <!-- Status do GPS -->
+    <div class="gps-status">
+      <div class="gps-item">
+        <span>SINAL GPS</span>
+        <strong id="gpsAccuracy" style="color:var(--warning);">Aguardando...</strong>
+      </div>
+      <div class="gps-item">
+        <span>TRANSMISSÕES</span>
+        <strong id="txCount">0 pkts</strong>
+      </div>
+      <div class="gps-item">
+        <span>TELA ATIVA</span>
+        <strong id="wakeLockStatus" style="color:var(--success);">Sim</strong>
+      </div>
+    </div>
+
+    <!-- Botão de Conexão -->
+    <button class="btn-connect" id="btnConnect" onclick="toggleBluetooth()">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="m7 7 10 10-5 5V2l5 5L7 17"/>
+      </svg>
+      Conectar ao ESP32
+    </button>
+
+    <!-- Teste Manual / Bancada (opcional para testar sem sair pedalando) -->
+    <div class="card sim-box">
+      <div class="sim-header">
+        <span>Teste de Bancada (Velocidade Manual)</span>
+        <span id="simVal">0.0 km/h</span>
+      </div>
+      <input type="range" min="0" max="65" value="0" step="0.5" class="slider" id="speedSlider" oninput="onSliderMove(this.value)">
+    </div>
+  </div>
+
+  <script>
+    // UUIDs padrão Nordic UART Service (NUS)
+    const NUS_SERVICE_UUID = '6e400001-b5a3-f393-e0a9-e50e24dcca9e';
+    const NUS_RX_CHAR_UUID = '6e400002-b5a3-f393-e0a9-e50e24dcca9e'; // Phone escreve aqui
+
+    let bleDevice = null;
+    let rxCharacteristic = null;
+    let isConnected = false;
+    let wakeLock = null;
+
+    // Estado da telemetria
+    let currentSpeedKmh = 0.0;
+    let currentAltitudeM = 0.0;
+    let totalDistanceKm = 0.0;
+    let hasGpsFix = false;
+    let lastLat = null;
+    let lastLon = null;
+    let txPacketCount = 0;
+    let isManualSlider = false;
+
+    // Elementos da UI
+    const btnConnect = document.getElementById('btnConnect');
+    const bleBadge = document.getElementById('bleBadge');
+    const bleText = document.getElementById('bleText');
+    const dispSpeed = document.getElementById('dispSpeed');
+    const dispDist = document.getElementById('dispDist');
+    const dispAlt = document.getElementById('dispAlt');
+    const gpsAccuracy = document.getElementById('gpsAccuracy');
+    const txCount = document.getElementById('txCount');
+    const speedSlider = document.getElementById('speedSlider');
+    const simVal = document.getElementById('simVal');
+
+    // Inicializa WakeLock para a tela do celular não apagar
+    async function requestWakeLock() {
+      try {
+        if ('wakeLock' in navigator) {
+          wakeLock = await navigator.wakeLock.request('screen');
+        }
+      } catch (err) {
+        console.warn('Wake Lock error:', err);
+      }
+    }
+
+    // Inicializa Geolocation
+    function initGeolocation() {
+      if (!('geolocation' in navigator)) {
+        gpsAccuracy.textContent = 'Não suportado';
+        gpsAccuracy.style.color = 'var(--danger)';
+        return;
+      }
+
+      navigator.geolocation.watchPosition(
+        (pos) => {
+          const coords = pos.coords;
+          hasGpsFix = coords.accuracy <= 30;
+
+          if (hasGpsFix) {
+            gpsAccuracy.textContent = `±${coords.accuracy.toFixed(0)}m (Bom)`;
+            gpsAccuracy.style.color = 'var(--success)';
+          } else {
+            gpsAccuracy.textContent = `±${coords.accuracy.toFixed(0)}m (Fraco)`;
+            gpsAccuracy.style.color = 'var(--warning)';
+          }
+
+          // Se não estiver mexendo no slider de teste manual, usa o GPS do celular
+          if (!isManualSlider) {
+            if (coords.speed !== null && coords.speed !== undefined && coords.speed >= 0) {
+              currentSpeedKmh = coords.speed * 3.6; // m/s para km/h
+            } else {
+              currentSpeedKmh = 0.0;
+            }
+          }
+
+          if (coords.altitude !== null && coords.altitude !== undefined) {
+            currentAltitudeM = coords.altitude;
+            dispAlt.textContent = Math.round(currentAltitudeM);
+          }
+
+          // Cálculo acumulado de odômetro via Haversine
+          if (lastLat !== null && lastLon !== null) {
+            const d = haversineDistance(lastLat, lastLon, coords.latitude, coords.longitude);
+            // Filtro de jitter (se moveu > 3 metros)
+            if (d > 0.003) {
+              totalDistanceKm += d;
+              dispDist.textContent = totalDistanceKm.toFixed(2);
+              lastLat = coords.latitude;
+              lastLon = coords.longitude;
+            }
+          } else {
+            lastLat = coords.latitude;
+            lastLon = coords.longitude;
+          }
+
+          updateDisplay();
+          sendTelemetryToESP32();
+        },
+        (err) => {
+          gpsAccuracy.textContent = 'Erro GPS (' + err.code + ')';
+          gpsAccuracy.style.color = 'var(--danger)';
+        },
+        {
+          enableHighAccuracy: true,
+          maximumAge: 0,
+          timeout: 5000
+        }
+      );
+    }
+
+    // Distância Haversine entre dois pontos em km
+    function haversineDistance(lat1, lon1, lat2, lon2) {
+      const R = 6371; // km
+      const dLat = (lat2 - lat1) * Math.PI / 180;
+      const dLon = (lon2 - lon1) * Math.PI / 180;
+      const a = Math.sin(dLat/2) * Math.sin(dLat/2) +
+                Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+                Math.sin(dLon/2) * Math.sin(dLon/2);
+      const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+      return R * c;
+    }
+
+    function updateDisplay() {
+      dispSpeed.textContent = currentSpeedKmh.toFixed(1);
+    }
+
+    // Slider de teste manual
+    function onSliderMove(val) {
+      isManualSlider = true;
+      currentSpeedKmh = parseFloat(val);
+      simVal.textContent = currentSpeedKmh.toFixed(1) + ' km/h';
+      hasGpsFix = true;
+      updateDisplay();
+      sendTelemetryToESP32();
+    }
+
+    // Transmissão de telemetria BLE para o ESP32
+    async function sendTelemetryToESP32() {
+      if (!isConnected || !rxCharacteristic) return;
+
+      try {
+        // Formato: V,<speed_kmh>,<alt_m>,<dist_km>,<has_fix>
+        const payload = `V,${currentSpeedKmh.toFixed(1)},${currentAltitudeM.toFixed(1)},${totalDistanceKm.toFixed(2)},${hasGpsFix ? 1 : 0}`;
+        const encoder = new TextEncoder();
+        await rxCharacteristic.writeValueWithoutResponse(encoder.encode(payload));
+        txPacketCount++;
+        txCount.textContent = txPacketCount + ' pkts';
+      } catch (err) {
+        console.warn('Erro envio BLE:', err);
+      }
+    }
+
+    // Loop de envio regular a 4 Hz (garante fluidez caso o GPS reporte devagar)
+    setInterval(() => {
+      if (isConnected) {
+        sendTelemetryToESP32();
+      }
+    }, 250);
+
+    // Conexão Web Bluetooth
+    async function toggleBluetooth() {
+      if (isConnected) {
+        disconnectBLE();
+      } else {
+        connectBLE();
+      }
+    }
+
+    async function connectBLE() {
+      try {
+        if (!navigator.bluetooth) {
+          alert('Seu navegador não suporta Web Bluetooth. No Android, use o Google Chrome.');
+          return;
+        }
+
+        btnConnect.textContent = 'Buscando BikeComputer...';
+
+        bleDevice = await navigator.bluetooth.requestDevice({
+          filters: [{ name: 'BikeComputer' }],
+          optionalServices: [NUS_SERVICE_UUID]
+        });
+
+        bleDevice.addEventListener('gattserverdisconnected', onDisconnected);
+
+        btnConnect.textContent = 'Conectando ao ESP32...';
+        const server = await bleDevice.gatt.connect();
+
+        const service = await server.getPrimaryService(NUS_SERVICE_UUID);
+        rxCharacteristic = await service.getCharacteristic(NUS_RX_CHAR_UUID);
+
+        isConnected = true;
+        bleBadge.classList.add('connected');
+        bleText.textContent = 'Conectado';
+        btnConnect.classList.add('connected');
+        btnConnect.textContent = 'Desconectar ESP32';
+
+        requestWakeLock();
+      } catch (err) {
+        console.error('Falha na conexão:', err);
+        btnConnect.textContent = 'Conectar ao ESP32';
+        alert('Não foi possível conectar: ' + err.message);
+      }
+    }
+
+    function disconnectBLE() {
+      if (bleDevice && bleDevice.gatt.connected) {
+        bleDevice.gatt.disconnect();
+      }
+      onDisconnected();
+    }
+
+    function onDisconnected() {
+      isConnected = false;
+      rxCharacteristic = null;
+      bleBadge.classList.remove('connected');
+      bleText.textContent = 'Desconectado';
+      btnConnect.classList.remove('connected');
+      btnConnect.textContent = 'Conectar ao ESP32';
+    }
+
+    // Inicialização
+    initGeolocation();
+    requestWakeLock();
+  </script>
+</body>
+</html>
