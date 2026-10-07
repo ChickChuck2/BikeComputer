@@ -71,15 +71,15 @@
     #define PIN_I2C_SCL     22
 #endif
 
-// Clock I2C: 400kHz (Fast Mode) é suportado pelo SSD1306 e reduz tempo no barramento
-#define I2C_CLOCK_SPEED     400000UL
+// Clock I2C: 800kHz no ESP32 para máxima fluidez e latência mínima
+#define I2C_CLOCK_SPEED     800000UL
 
 // =============================================================================
 // TEMPORIZAÇÃO E TAXAS DE ATUALIZAÇÃO (Sem delay())
 // =============================================================================
 // Taxa de atualização do display (FPS).
 #if IS_ESP32
-    #define UI_TARGET_FPS       25
+    #define UI_TARGET_FPS       35
 #else
     #define UI_TARGET_FPS       12
 #endif
@@ -91,10 +91,8 @@
 // Duração da tela de Splash/Boot (milissegundos)
 #define BOOT_SCREEN_DURATION_MS 2500
 
-// Modo de demonstração sem botões físicos:
-// Como ainda não há botões instalados, alterna automaticamente entre telas
-// para visualização de diagnóstico e tela principal.
-#define UI_AUTO_CYCLE_SCREENS   1
+// Trava fixo na tela principal do velocímetro (sem alternar)
+#define UI_AUTO_CYCLE_SCREENS   0
 #define UI_AUTO_CYCLE_INTERVAL_MS 6000 // Alterna a cada 6 segundos
 
 // =============================================================================

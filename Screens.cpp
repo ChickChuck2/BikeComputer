@@ -226,28 +226,27 @@ void Screens::renderSpeedometer(DisplayManager& display, const BikeState& state)
     if (spd < 0.0f)   spd = 0.0f;
     if (spd > 999.0f) spd = 999.0f;
 
-    // Gauge lerp inteiro
+    // Gauge lerp inteiro rápido para resposta ultra responsiva
     uint16_t target4 = (uint16_t)((spd / SPEED_MAX_KMH) * (DISPLAY_WIDTH * 4));
     if (target4 > (uint16_t)(DISPLAY_WIDTH * 4)) target4 = (uint16_t)(DISPLAY_WIDTH * 4);
     if (gaugeFixed4 < target4) {
         uint16_t d = target4 - gaugeFixed4;
-        gaugeFixed4 += (d < 6) ? d : (d / 6 + 1);
+        gaugeFixed4 += (d < 3) ? d : (d / 2 + 1);
     } else if (gaugeFixed4 > target4) {
         uint16_t d = gaugeFixed4 - target4;
-        gaugeFixed4 -= (d < 6) ? d : (d / 6 + 1);
+        gaugeFixed4 -= (d < 3) ? d : (d / 2 + 1);
     }
 
-    // Tendência: snapshot a cada 1s
-    if (now - prevSpeedTime >= 1000) {
+    // Tendência: snapshot a cada 500ms
+    if (now - prevSpeedTime >= 500) {
         float delta = spd - prevSpeedKmh;
-        trendDir = (delta >  1.2f) ?  1 :
-                   (delta < -1.2f) ? -1 : 0;
+        trendDir = (delta >  0.6f) ?  1 :
+                   (delta < -0.6f) ? -1 : 0;
         prevSpeedKmh  = spd;
         prevSpeedTime = now;
     }
 
     // Pulso de cantos: frequência sobe com a velocidade
-    // 0 km/h → 1200 ms por ciclo | 80 km/h → 180 ms por ciclo
     uint16_t period = (spd < 1.0f) ? 1200
         : (uint16_t)(1200 - (spd / SPEED_MAX_KMH) * 1020);
     if (period < 180) period = 180;
@@ -256,24 +255,11 @@ void Screens::renderSpeedometer(DisplayManager& display, const BikeState& state)
         pulseTick ^= 1;
     }
 
-    // Decimal piscante: quando variação rápida
-    float dAbs = (spd > prevSpeedKmh) ? (spd - prevSpeedKmh) : (prevSpeedKmh - spd);
-    if (dAbs > 5.0f) {
-        if (now - lastBlinkMs >= 200) {
-            lastBlinkMs = now;
-            decimalBlink ^= 1;
-        }
-    } else {
-        decimalBlink = 0;
-    }
-
     // -----------------------------------------------------------------------
     // 2. RENDERIZAÇÃO
     // -----------------------------------------------------------------------
 
     // --- 2a. CANTOS PULSANTES (L-shapes nos 4 cantos da tela)
-    //         Substituem drawFrame() para não cortar o texto do header
-    //         Ficam exclusivamente nos cantos, sem invadir a área central.
     if (pulseTick) {
         uint8_t W = DISPLAY_WIDTH - 1;  // 127
         uint8_t H = DISPLAY_HEIGHT - 1; // 63
@@ -293,8 +279,8 @@ void Screens::renderSpeedometer(DisplayManager& display, const BikeState& state)
         u8g2.drawVLine(W, H - L + 1, L);
     }
 
-    // --- 2b. HEADER (Y baseline = 13 → ascendente 5x7 chega até Y≈6, fora da borda)
-    u8g2.setFont(u8g2_font_6x10_tf); // 6×10: mais legível que 5×7 no topo
+    // --- 2b. HEADER
+    u8g2.setFont(u8g2_font_6x10_tf);
 
     // Seta de tendência (esquerda)
     u8g2.setCursor(3, 13);
@@ -311,29 +297,39 @@ void Screens::renderSpeedometer(DisplayManager& display, const BikeState& state)
         u8g2.print(F("NO-BT"));
     }
 
-    // Unidade "km/h" (direita) — âncora na borda direita
+    // Unidade "km/h" (direita)
     const char* unit = "km/h";
     int16_t uw = u8g2.getStrWidth(unit);
     u8g2.setCursor(DISPLAY_WIDTH - uw - 3, 13);
     u8g2.print(unit);
 
-    // Linha separadora limpa (2px abaixo da baseline → não toca nos descenders)
+    // Linha separadora limpa
     u8g2.drawHLine(0, 15, DISPLAY_WIDTH);
 
-    // --- 2c. NÚMERO GIGANTE DE VELOCIDADE
-    //         Baseline Y=48: ascendente chega em ~Y=16 (2px de folga abaixo da linha)
+    // --- 2c. NÚMERO GIGANTE DE VELOCIDADE (Alta precisão: 2 casas decimais contínuas)
     u8g2.setFont(u8g2_font_logisoso32_tn);
 
-    // Monta string sem sprintf/dtostrf
-    char spdStr[7];
-    uint16_t sp10 = (uint16_t)(spd * 10.0f + 0.5f);
-    uint8_t  spInt = (uint8_t)(sp10 / 10);
-    uint8_t  spDec = (uint8_t)(sp10 % 10);
-    uint8_t  idx = 0;
-    if (spInt >= 100) spdStr[idx++] = '0' + (spInt / 100);
-    if (spInt >= 10)  spdStr[idx++] = '0' + ((spInt / 10) % 10);
-    spdStr[idx++] = '0' + (spInt % 10);
-    if (!decimalBlink) {
+    char spdStr[8];
+    uint8_t idx = 0;
+
+    if (spd < 100.0f) {
+        // Alta precisão: 2 casas decimais (ex: 24.58 ou 0.00)
+        uint32_t sp100 = (uint32_t)(spd * 100.0f + 0.5f);
+        uint16_t spInt = sp100 / 100;
+        uint8_t  spDec = sp100 % 100;
+        if (spInt >= 10)  spdStr[idx++] = '0' + ((spInt / 10) % 10);
+        spdStr[idx++] = '0' + (spInt % 10);
+        spdStr[idx++] = '.';
+        spdStr[idx++] = '0' + (spDec / 10);
+        spdStr[idx++] = '0' + (spDec % 10);
+    } else {
+        // >= 100 km/h: 3 inteiros + 1 decimal (ex: 104.5)
+        uint32_t sp10 = (uint32_t)(spd * 10.0f + 0.5f);
+        uint16_t spInt = sp10 / 10;
+        uint8_t  spDec = sp10 % 10;
+        spdStr[idx++] = '0' + (spInt / 100);
+        spdStr[idx++] = '0' + ((spInt / 10) % 10);
+        spdStr[idx++] = '0' + (spInt % 10);
         spdStr[idx++] = '.';
         spdStr[idx++] = '0' + spDec;
     }

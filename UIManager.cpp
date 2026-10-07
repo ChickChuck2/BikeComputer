@@ -31,8 +31,8 @@ void UIManager::update(const BikeState& state) {
     if (m_currentScreen == SCREEN_BOOT) {
         uint32_t elapsed = now - m_bootStartMs;
         if (elapsed >= BOOT_SCREEN_DURATION_MS) {
-            // Após o boot, entra primeiro em diagnóstico para validação imediata do hardware
-            m_currentScreen = SCREEN_DIAGNOSTICS;
+            // Após o boot, fixa diretamente no velocímetro dedicado
+            m_currentScreen = SCREEN_SPEEDOMETER;
             m_lastCycleMs = now;
         }
     } 
